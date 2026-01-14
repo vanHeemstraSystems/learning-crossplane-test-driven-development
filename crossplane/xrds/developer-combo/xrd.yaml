@@ -1,1 +1,68 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+name: xdevelopercombo.example.com
+spec:
+group: example.com
+names:
+kind: XDeveloperCombo
+plural: xdevelopercombo
+claimNames:
+kind: DeveloperCombo
+plural: developercombo
+versions:
 
+- name: v1alpha1
+  served: true
+  referenceable: true
+  schema:
+  openAPIV3Schema:
+  type: object
+  properties:
+  spec:
+  type: object
+  description: “Developer Combo specification - like ordering from a fast food menu”
+  properties:
+  size:
+  type: string
+  description: “Size of your combo: small, medium, or large (like Happy Meal sizes)”
+  enum:
+  - small
+  - medium
+  - large
+  includeDatabase:
+  type: boolean
+  description: “Want a database with that? (like adding a drink to your meal)”
+  default: true
+  storageSize:
+  type: string
+  description: “Storage account size (like choosing fries size)”
+  default: “10Gi”
+  environment:
+  type: string
+  description: “Environment type: development, staging, or production”
+  enum:
+  - development
+  - staging
+  - production
+  default: development
+  required:
+  - size
+  status:
+  type: object
+  properties:
+  ready:
+  type: boolean
+  description: “Is your meal ready?”
+  endpoint:
+  type: string
+  description: “Where to pick up your order (database endpoint)”
+  resourceGroupName:
+  type: string
+  description: “The tray holding your meal (resource group name)”
+  storageAccountName:
+  type: string
+  description: “Your fries container (storage account name)”
+  networkName:
+  type: string
+  description: “Your drink cup (virtual network name)”
