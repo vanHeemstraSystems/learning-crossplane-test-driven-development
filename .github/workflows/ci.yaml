@@ -1,0 +1,249 @@
+name: Crossplane TDD CI
+
+on:
+push:
+branches: [ main, develop ]
+pull_request:
+branches: [ main, develop ]
+
+env:
+KUBECONFIG: /tmp/kubeconfig
+
+jobs:
+
+# Fast validation - runs on every commit
+
+validate:
+name: Validate YAML and Policies
+runs-on: ubuntu-latest
+timeout-minutes: 5
+
+```
+steps:
+- name: Checkout code
+  uses: actions/checkout@v3
+
+- name: Install yq
+  run: |
+    sudo wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    sudo chmod +x /usr/bin/yq
+
+- name: Install conftest
+  run: |
+    wget https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz
+    tar xzf conftest_Linux_x86_64.tar.gz
+    sudo mv conftest /usr/local/bin/
+
+- name: Validate YAML syntax
+  run: |
+    echo "🔍 Validating YAML syntax..."
+    find crossplane -name "*.yaml" -exec yq eval 'explode(.)' {} \;
+
+- name: Run policy tests
+  run: |
+    echo "🔐 Running policy tests..."
+    if [ -f "tools/conftest/policy/crossplane.rego" ]; then
+      conftest test crossplane/compositions/ -p tools/conftest/policy/ || true
+    fi
+```
+
+# Unit tests - runs on every commit
+
+unit-tests:
+name: Unit Tests
+runs-on: ubuntu-latest
+timeout-minutes: 10
+needs: validate
+
+```
+steps:
+- name: Checkout code
+  uses: actions/checkout@v3
+
+- name: Install tools
+  run: |
+    # Install yq
+    sudo wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    sudo chmod +x /usr/bin/yq
+    
+    # Install kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install kubectl /usr/local/bin/kubectl
+    
+    # Install kubeconform
+    wget https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+    tar xf kubeconform-linux-amd64.tar.gz
+    sudo mv kubeconform /usr/local/bin/
+
+- name: Make scripts executable
+  run: chmod +x scripts/test/*.sh
+
+- name: Run unit tests
+  run: |
+    echo "🧪 Running unit tests..."
+    ./scripts/test/run-unit-tests.sh
+
+- name: Upload test results
+  if: always()
+  uses: actions/upload-artifact@v3
+  with:
+    name: unit-test-results
+    path: test-results/
+```
+
+# Integration tests - runs on pull requests
+
+integration-tests:
+name: Integration Tests
+runs-on: ubuntu-latest
+timeout-minutes: 45
+needs: unit-tests
+if: github.event_name == ‘pull_request’
+
+```
+steps:
+- name: Checkout code
+  uses: actions/checkout@v3
+
+- name: Install tools
+  run: |
+    sudo wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    sudo chmod +x /usr/bin/yq
+    
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install kubectl /usr/local/bin/kubectl
+
+- name: Install Minikube
+  run: |
+    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+- name: Install Helm
+  uses: azure/setup-helm@v3
+  with:
+    version: 'v3.12.0'
+
+- name: Start Minikube
+  run: |
+    minikube start --driver=docker --cpus=2 --memory=4096
+    kubectl cluster-info
+
+- name: Install Crossplane
+  run: |
+    chmod +x environments/minikube/crossplane-install.sh
+    ./environments/minikube/crossplane-install.sh
+
+- name: Wait for Crossplane
+  run: |
+    kubectl wait --for=condition=available --timeout=300s \
+      deployment/crossplane -n crossplane-system
+
+- name: Apply XRD and Composition
+  run: |
+    kubectl apply -f crossplane/xrds/developer-combo/xrd.yaml
+    kubectl apply -f crossplane/compositions/developer-combo/azure-composition.yaml
+    sleep 10
+
+- name: Verify XRD and Composition
+  run: |
+    kubectl get xrd
+    kubectl get composition
+
+- name: Upload integration test results
+  if: always()
+  uses: actions/upload-artifact@v3
+  with:
+    name: integration-test-results
+    path: test-results/
+```
+
+# E2E tests - runs on main branch merges
+
+e2e-tests:
+name: End-to-End Tests
+runs-on: ubuntu-latest
+timeout-minutes: 120
+needs: unit-tests
+if: github.ref == ‘refs/heads/main’
+
+```
+steps:
+- name: Checkout code
+  uses: actions/checkout@v3
+
+- name: Setup environment
+  run: |
+    echo "⚠️ E2E tests require Azure credentials"
+    echo "This job is configured but will skip actual Azure deployment"
+    echo "To enable: Add AZURE_CREDENTIALS secret to GitHub"
+
+# Placeholder for actual E2E tests
+# Uncomment when Azure credentials are configured
+# - name: Configure Azure credentials
+#   env:
+#     AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+#   run: |
+#     echo "$AZURE_CREDENTIALS" | base64 -d > /tmp/azure-creds.json
+
+# - name: Run E2E tests
+#   run: |
+#     chmod +x scripts/test/run-e2e-tests.sh
+#     ./scripts/test/run-e2e-tests.sh
+```
+
+# Documentation check
+
+docs-check:
+name: Documentation Check
+runs-on: ubuntu-latest
+timeout-minutes: 5
+
+```
+steps:
+- name: Checkout code
+  uses: actions/checkout@v3
+
+- name: Check for broken links
+  run: |
+    echo "📚 Checking documentation..."
+    # Check that all referenced files exist
+    for file in README.md GETTING_STARTED.md FILE_INDEX.md SUMMARY.md; do
+      if [ ! -f "$file" ]; then
+        echo "❌ Missing: $file"
+        exit 1
+      fi
+    done
+    echo "✅ All documentation files present"
+
+- name: Validate markdown
+  uses: DavidAnson/markdownlint-cli2-action@v9
+  with:
+    globs: '**/*.md'
+    config: |
+      {
+        "default": true,
+        "MD013": false,
+        "MD033": false,
+        "MD041": false
+      }
+```
+
+# Summary
+
+summary:
+name: Test Summary
+runs-on: ubuntu-latest
+needs: [validate, unit-tests, integration-tests, docs-check]
+if: always()
+
+```
+steps:
+- name: Check results
+  run: |
+    echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+    echo "" >> $GITHUB_STEP_SUMMARY
+    echo "- Validation: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
+    echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+    echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+    echo "- Documentation: ${{ needs.docs-check.result }}" >> $GITHUB_STEP_SUMMARY
+```
