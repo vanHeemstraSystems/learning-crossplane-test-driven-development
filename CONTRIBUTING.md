@@ -203,7 +203,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ### Enforcement
 
-Violations can be reported to [your-email@example.com]. All complaints will be reviewed and investigated.
+Violations can be reported to [wvanheemstra@icloud.com]. All complaints will be reviewed and investigated.
 
 ## 🎓 Learning Resources
 
