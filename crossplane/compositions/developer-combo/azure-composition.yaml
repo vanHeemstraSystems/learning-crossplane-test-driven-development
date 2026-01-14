@@ -1,1 +1,190 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+name: developercombo.azure.example.com
+labels:
+provider: azure
+combo: developer
+spec:
+compositeTypeRef:
+apiVersion: example.com/v1alpha1
+kind: XDeveloperCombo
 
+mode: Pipeline
+pipeline:
+
+- step: patch-and-transform
+  functionRef:
+  name: function-patch-and-transform
+  input:
+  apiVersion: pt.fn.crossplane.io/v1beta1
+  kind: Resources
+  resources:
+  
+  # The “Tray” - Resource Group to hold everything
+  - name: resourcegroup
+    base:
+    apiVersion: azure.upbound.io/v1beta1
+    kind: ResourceGroup
+    spec:
+    deletionPolicy: Delete
+    forProvider:
+    location: westeurope
+    tags:
+    ManagedBy: Crossplane
+    Metaphor: FastFoodTray
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+        fmt: “rg-combo-%s”
+        type: Format
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.environment
+      toFieldPath: spec.forProvider.tags.Environment
+    - type: ToCompositeFieldPath
+      fromFieldPath: metadata.annotations[crossplane.io/external-name]
+      toFieldPath: status.resourceGroupName
+      readinessChecks:
+    - type: None
+  
+  # The “Burger” - Azure Database for PostgreSQL
+  - name: database
+    base:
+    apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+    kind: FlexibleServer
+    metadata:
+    annotations:
+    crossplane.io/external-name: developer-combo-db
+    spec:
+    deletionPolicy: Delete
+    forProvider:
+    location: westeurope
+    resourceGroupNameSelector:
+    matchControllerRef: true
+    administratorLogin: combouser
+    administratorPasswordSecretRef:
+    name: db-password
+    namespace: crossplane-system
+    key: password
+    version: “15”
+    storageMb: 32768
+    skuName: B_Standard_B1ms
+    tags:
+    ManagedBy: Crossplane
+    Metaphor: FastFoodBurger
+    patches:
+    
+    # Size mapping: small -> B1ms, medium -> D2s_v3, large -> D4s_v3
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.size
+      toFieldPath: spec.forProvider.skuName
+      transforms:
+      - type: map
+        map:
+        small: B_Standard_B1ms
+        medium: GP_Standard_D2s_v3
+        large: GP_Standard_D4s_v3
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.environment
+      toFieldPath: spec.forProvider.tags.Environment
+    - type: FromCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+        fmt: “combo-%s-db”
+        type: Format
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.fqdn
+      toFieldPath: status.endpoint
+    
+    # Conditional: only create if includeDatabase is true
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.includeDatabase
+      toFieldPath: spec.forProvider.skuName
+      policy:
+      fromFieldPath: Required
+      readinessChecks:
+    - type: MatchString
+      fieldPath: status.atProvider.state
+      matchString: “Ready”
+  
+  # The “Fries” - Azure Storage Account
+  - name: storage
+    base:
+    apiVersion: storage.azure.upbound.io/v1beta1
+    kind: Account
+    spec:
+    deletionPolicy: Delete
+    forProvider:
+    location: westeurope
+    resourceGroupNameSelector:
+    matchControllerRef: true
+    accountTier: Standard
+    accountReplicationType: LRS
+    tags:
+    ManagedBy: Crossplane
+    Metaphor: FastFoodFries
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.storageSize
+      toFieldPath: spec.forProvider.tags.StorageSize
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.environment
+      toFieldPath: spec.forProvider.tags.Environment
+    - type: FromCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+        fmt: “combo%sstorage”
+        type: Format
+    - type: ToCompositeFieldPath
+      fromFieldPath: metadata.annotations[crossplane.io/external-name]
+      toFieldPath: status.storageAccountName
+      readinessChecks:
+    - type: MatchString
+      fieldPath: status.atProvider.provisioningState
+      matchString: “Succeeded”
+  
+  # The “Drink” - Virtual Network
+  - name: network
+    base:
+    apiVersion: network.azure.upbound.io/v1beta1
+    kind: VirtualNetwork
+    spec:
+    deletionPolicy: Delete
+    forProvider:
+    location: westeurope
+    resourceGroupNameSelector:
+    matchControllerRef: true
+    addressSpace:
+    - 10.0.0.0/16
+    tags:
+    ManagedBy: Crossplane
+    Metaphor: FastFoodDrink
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.environment
+      toFieldPath: spec.forProvider.tags.Environment
+    - type: FromCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+        fmt: “combo-%s-vnet”
+        type: Format
+    - type: ToCompositeFieldPath
+      fromFieldPath: metadata.annotations[crossplane.io/external-name]
+      toFieldPath: status.networkName
+      readinessChecks:
+    - type: MatchString
+      fieldPath: status.atProvider.provisioningState
+      matchString: “Succeeded”
