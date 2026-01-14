@@ -1,1 +1,77 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+name: PLACEHOLDER_NAME
+labels:
+provider: PLACEHOLDER_PROVIDER
+combo: PLACEHOLDER_COMBO
+spec:
+compositeTypeRef:
+apiVersion: PLACEHOLDER_API_VERSION
+kind: PLACEHOLDER_KIND
 
+mode: Pipeline
+pipeline:
+
+- step: patch-and-transform
+  functionRef:
+  name: function-patch-and-transform
+  input:
+  apiVersion: pt.fn.crossplane.io/v1beta1
+  kind: Resources
+  resources:
+  
+  # Add your resources here following this pattern:
+  
+  # 
+  
+  # - name: resource-name
+  
+  # base:
+  
+  # apiVersion: provider.api/version
+  
+  # kind: ResourceKind
+  
+  # spec:
+  
+  # deletionPolicy: Delete  # Important!
+  
+  # forProvider:
+  
+  # # Resource configuration
+  
+  # patches:
+  
+  # - type: FromCompositeFieldPath
+  
+  # fromFieldPath: spec.size
+  
+  # toFieldPath: spec.forProvider.skuName
+  
+  # readinessChecks:
+  
+  # - type: MatchString
+  
+  # fieldPath: status.atProvider.state
+  
+  # matchString: “Ready”
+  - name: resourcegroup
+    base:
+    apiVersion: azure.upbound.io/v1beta1
+    kind: ResourceGroup
+    spec:
+    deletionPolicy: Delete
+    forProvider:
+    location: westeurope
+    tags:
+    ManagedBy: Crossplane
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+        fmt: “rg-%s”
+        type: Format
