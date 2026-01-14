@@ -313,7 +313,6 @@ You’ll know this repository is valuable when:
 
 Created for:
 
-- **Willem van Heemstra** - Architect, Team Rockstars Cloud B.V.
 - **IDP Project** - Internal Developer Platform
 - **Built on**: Fast Food Restaurant metaphor
 - **Optimized for**: Minikube, yq, Azure
