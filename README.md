@@ -2,6 +2,7 @@
 
 > A systematic approach to testing Crossplane infrastructure-as-code using the Fast Food Restaurant metaphor
 
+[![.github/workflows/ci.yml](https://github.com/vanHeemstraSystems/learning-crossplane-test-driven-development/actions/workflows/ci.yml/badge.svg)](https://github.com/vanHeemstraSystems/learning-crossplane-test-driven-development/actions/workflows/ci.yml)
 [![Crossplane](https://img.shields.io/badge/Crossplane-v2.x-blue)](https://crossplane.io/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.28+-green)](https://kubernetes.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
