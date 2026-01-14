@@ -1,1 +1,49 @@
+## apiVersion: azure.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+name: default
+annotations:
+description: “Default Azure Provider Configuration - Kitchen Access Credentials”
+spec:
+credentials:
+source: Secret
+secretRef:
+namespace: crossplane-system
+name: azure-credentials
+key: credentials
 
+# Example of how to create the secret (run this command):
+
+# 
+
+# kubectl create secret generic azure-credentials \
+
+# -n crossplane-system \
+
+# –from-literal=credentials=’{
+
+# “clientId”: “your-client-id”,
+
+# “clientSecret”: “your-client-secret”,
+
+# “subscriptionId”: “your-subscription-id”,
+
+# “tenantId”: “your-tenant-id”
+
+# }’
+
+# 
+
+# To create Azure Service Principal:
+
+# 
+
+# az ad sp create-for-rbac \
+
+# –name crossplane-sp \
+
+# –role Contributor \
+
+# –scopes /subscriptions/YOUR_SUBSCRIPTION_ID \
+
+# –sdk-auth
