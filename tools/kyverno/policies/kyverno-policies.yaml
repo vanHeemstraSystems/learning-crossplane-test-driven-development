@@ -1,0 +1,268 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+name: crossplane-composition-policies
+annotations:
+policies.kyverno.io/title: Crossplane Composition Best Practices
+policies.kyverno.io/category: Crossplane
+policies.kyverno.io/description: >-
+Enforces best practices for Crossplane Compositions using the
+Fast Food Restaurant metaphor. All resources must be properly
+configured for cleanup (like clearing the tray after a meal).
+spec:
+validationFailureAction: audit
+background: false
+rules:
+
+# Rule 1: All resources must have deletionPolicy
+
+- name: require-deletion-policy
+  match:
+  any:
+  - resources:
+    kinds:
+    - Composition
+      validate:
+      message: >-
+      All resources must have deletionPolicy set.
+      🚫 Kitchen doesn’t know how to clean up without this!
+      foreach:
+  - list: “spec.pipeline[0].input.resources”
+    deny:
+    conditions:
+    any:
+    - key: “{{ element.base.spec.deletionPolicy || ‘’ }}”
+    operator: Equals
+    value: “”
+
+# Rule 2: Warn about Orphan deletion policy
+
+- name: warn-orphan-policy
+  match:
+  any:
+  - resources:
+    kinds:
+    - Composition
+      validate:
+      message: >-
+      Resource uses Orphan deletionPolicy.
+      ⚠️ Leftovers will stay on the tray! Consider using ‘Delete’ instead.
+      foreach:
+  - list: “spec.pipeline[0].input.resources”
+    deny:
+    conditions:
+    any:
+    - key: “{{ element.base.spec.deletionPolicy || ‘’ }}”
+    operator: Equals
+    value: “Orphan”
+
+# Rule 3: Require ManagedBy tag
+
+- name: require-managed-by-tag
+  match:
+  any:
+  - resources:
+    kinds:
+    - Composition
+      validate:
+      message: >-
+      All resources must have ManagedBy tag.
+      🏷️ Who’s the chef? Tag your resources!
+      foreach:
+  - list: “spec.pipeline[0].input.resources”
+    deny:
+    conditions:
+    any:
+    - key: “{{ element.base.spec.forProvider.tags.ManagedBy || ‘’ }}”
+    operator: Equals
+    value: “”
+
+# Rule 4: Database resources should have readiness checks
+
+- name: database-readiness-check
+  match:
+  any:
+  - resources:
+    kinds:
+    - Composition
+      validate:
+      message: >-
+      Database resources should have readiness checks.
+      ⏰ How do we know when the burger is ready?
+      foreach:
+  - list: “spec.pipeline[0].input.resources[?name == ‘database’]”
+    deny:
+    conditions:
+    any:
+    - key: “{{ element.readinessChecks | length(@) }}”
+    operator: LessThan
+    value: 1
+
+# Rule 5: Resource naming conventions
+
+- name: database-naming-convention
+  match:
+  any:
+  - resources:
+    kinds:
+    - Composition
+      validate:
+      message: >-
+      Database external name must contain ‘db’.
+      🍔 The burger should be labeled properly!
+      foreach:
+  - list: “spec.pipeline[0].input.resources[?name == ‘database’]”
+    pattern:
+    base:
+    metadata:
+    annotations:
+    crossplane.io/external-name: “*db*”
+
+-----
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+name: crossplane-xrd-policies
+annotations:
+policies.kyverno.io/title: Crossplane XRD Best Practices
+policies.kyverno.io/category: Crossplane
+policies.kyverno.io/description: >-
+Enforces best practices for Crossplane XRDs (Menu Boards).
+Ensures customers can read the menu clearly!
+spec:
+validationFailureAction: audit
+background: false
+rules:
+
+# Rule 1: XRD must have description
+
+- name: require-description
+  match:
+  any:
+  - resources:
+    kinds:
+    - CompositeResourceDefinition
+      validate:
+      message: >-
+      XRD spec must have a description.
+      📋 Menu items need descriptions so customers know what they’re ordering!
+      pattern:
+      spec:
+      versions:
+    - schema:
+      openAPIV3Schema:
+      properties:
+      spec:
+      description: “?*”
+
+# Rule 2: Size enum should be defined
+
+- name: size-enum-defined
+  match:
+  any:
+  - resources:
+    kinds:
+    - CompositeResourceDefinition
+      validate:
+      message: >-
+      Size field should have enum values.
+      📏 Menu should list available sizes: small, medium, large!
+      pattern:
+      spec:
+      versions:
+    - schema:
+      openAPIV3Schema:
+      properties:
+      spec:
+      properties:
+      size:
+      enum:
+      - small
+      - medium
+      - large
+
+# Rule 3: ClaimNames must be defined
+
+- name: require-claim-names
+  match:
+  any:
+  - resources:
+    kinds:
+    - CompositeResourceDefinition
+      validate:
+      message: >-
+      XRD must define claimNames.
+      🎫 Customers need order forms!
+      pattern:
+      spec:
+      claimNames:
+      kind: “?*”
+      plural: “?*”
+
+-----
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+name: crossplane-claim-policies
+annotations:
+policies.kyverno.io/title: Crossplane Claim Validation
+policies.kyverno.io/category: Crossplane
+policies.kyverno.io/description: >-
+Validates Crossplane Claims (Customer Orders).
+Ensures orders are complete and valid!
+spec:
+validationFailureAction: enforce
+background: false
+rules:
+
+# Rule 1: Size must be valid
+
+- name: validate-size
+  match:
+  any:
+  - resources:
+    kinds:
+    - DeveloperCombo
+      validate:
+      message: >-
+      Size must be one of: small, medium, large.
+      🍔 We only have these sizes on the menu!
+      pattern:
+      spec:
+      size: “small | medium | large”
+
+# Rule 2: Environment must be valid
+
+- name: validate-environment
+  match:
+  any:
+  - resources:
+    kinds:
+    - DeveloperCombo
+      validate:
+      message: >-
+      Environment must be one of: development, staging, production.
+      🏷️ Invalid environment type!
+      pattern:
+      spec:
+      environment: “development | staging | production”
+
+# Rule 3: Composition selector must be set
+
+- name: require-composition-selector
+  match:
+  any:
+  - resources:
+    kinds:
+    - DeveloperCombo
+      validate:
+      message: >-
+      Claims must specify a compositionSelector.
+      👨‍🍳 We need to know which kitchen to send your order to!
+      pattern:
+      spec:
+      compositionSelector:
+      matchLabels:
+      provider: “?*”
