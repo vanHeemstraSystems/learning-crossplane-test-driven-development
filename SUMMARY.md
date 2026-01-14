@@ -87,7 +87,7 @@
 - Testing methodology documented
 - Best practices codified
 
-### ✅ Atos IDP Project
+### ✅ IDP Project
 
 - Azure provider focus
 - Architect-level documentation
@@ -153,7 +153,7 @@ Policies:             2 frameworks (OPA, Kyverno)
 - ✅ Testing standards
 - ✅ CI/CD templates
 
-## 🏗️ As Atos IDP Architect, Use This For
+## 🏗️ As IDP Architect, Use This For
 
 1. **Platform Standards**
 - Reference XRD/Composition patterns
@@ -278,7 +278,7 @@ You’ll know this repository is valuable when:
 
 ### This Week
 
-1. Share with Atos IDP team
+1. Share with IDP team
 1. Run through Quick Start
 1. Customize for your use cases
 1. Add to team wiki
@@ -314,7 +314,7 @@ You’ll know this repository is valuable when:
 Created for:
 
 - **Willem van Heemstra** - Architect, Team Rockstars Cloud B.V.
-- **Atos IDP Project** - Internal Developer Platform
+- **IDP Project** - Internal Developer Platform
 - **Built on**: Fast Food Restaurant metaphor
 - **Optimized for**: Minikube, yq, Azure
 
@@ -322,7 +322,7 @@ Created for:
 
 **Congratulations on your Architect role!** 🏆
 
-**You have everything needed to establish platform excellence at Atos!** 🚀
+**You have everything needed to establish platform excellence!** 🚀
 
 **“May your infrastructure be as reliable as a combo meal!”** 🍔🍟🥤
 
