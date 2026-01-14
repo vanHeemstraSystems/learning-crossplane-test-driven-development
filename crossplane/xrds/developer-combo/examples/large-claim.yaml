@@ -1,1 +1,21 @@
+# Large Developer Combo - “Super Size”
 
+# Production-ready infrastructure
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-prod
+namespace: production
+annotations:
+description: “Large combo for production - Super Sized!”
+spec:
+size: large
+includeDatabase: true
+storageSize: “500Gi”
+environment: production
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
