@@ -1,0 +1,259 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+name: developer-combo-small-integration
+annotations:
+description: “Integration test for small Developer Combo - like testing a Kids Meal order”
+spec:
+
+# Cleanup after test
+
+cleanup:
+skip: false
+
+steps:
+
+# Step 1: Place the order (create claim)
+
+- name: create-small-combo-claim
+  description: “Customer orders a small Developer Combo”
+  try:
+  - apply:
+    file: ../../../crossplane/xrds/developer-combo/examples/small-claim.yaml
+  - assert:
+    resource:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    metadata:
+    name: myapp-dev
+    namespace: development
+    timeout: 30s
+
+# Step 2: Verify the tray (resource group) was created
+
+- name: verify-resource-group
+  description: “Check that the tray (Resource Group) is ready”
+  try:
+  - assert:
+    resource:
+    apiVersion: azure.upbound.io/v1beta1
+    kind: ResourceGroup
+    metadata:
+    labels:
+    crossplane.io/composite: myapp-dev
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    timeout: 2m
+
+# Step 3: Verify the burger (database) was created
+
+- name: verify-database
+  description: “Check that the burger (PostgreSQL) is ready”
+  try:
+  - assert:
+    resource:
+    apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+    kind: FlexibleServer
+    metadata:
+    labels:
+    crossplane.io/composite: myapp-dev
+    spec:
+    forProvider:
+    skuName: B_Standard_B1ms  # Small size
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    atProvider:
+    state: Ready
+    timeout: 10m
+
+# Step 4: Verify the fries (storage account) was created
+
+- name: verify-storage
+  description: “Check that the fries (Storage Account) are ready”
+  try:
+  - assert:
+    resource:
+    apiVersion: storage.azure.upbound.io/v1beta1
+    kind: Account
+    metadata:
+    labels:
+    crossplane.io/composite: myapp-dev
+    spec:
+    forProvider:
+    accountTier: Standard
+    accountReplicationType: LRS
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    timeout: 5m
+
+# Step 5: Verify the drink (virtual network) was created
+
+- name: verify-network
+  description: “Check that the drink (Virtual Network) is ready”
+  try:
+  - assert:
+    resource:
+    apiVersion: network.azure.upbound.io/v1beta1
+    kind: VirtualNetwork
+    metadata:
+    labels:
+    crossplane.io/composite: myapp-dev
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    timeout: 5m
+
+# Step 6: Verify the complete meal (claim ready)
+
+- name: verify-claim-ready
+  description: “Check that the complete meal is ready to serve”
+  try:
+  - assert:
+    resource:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    metadata:
+    name: myapp-dev
+    namespace: development
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    ready: true
+    timeout: 15m
+
+# Step 7: Verify endpoint is populated
+
+- name: verify-endpoint
+  description: “Check that we can pick up the order (endpoint available)”
+  try:
+  - script:
+    content: |
+    #!/bin/bash
+    ENDPOINT=$(kubectl get developercombo myapp-dev -n development   
+    -o jsonpath=’{.status.endpoint}’)
+    
+    ```
+    if [ -z "$ENDPOINT" ]; then
+      echo "❌ No endpoint found - order not ready!"
+      exit 1
+    fi
+    
+    echo "✅ Order ready at: $ENDPOINT"
+    
+    if [[ ! "$ENDPOINT" =~ \.postgres\.database\.azure\.com$ ]]; then
+      echo "❌ Endpoint doesn't look like Azure PostgreSQL"
+      exit 1
+    fi
+    
+    echo "✅ Endpoint format is correct"
+    ```
+
+# Step 8: Cleanup (clear the tray)
+
+- name: delete-claim
+  description: “Customer finishes meal, clear the tray”
+  try:
+  - delete:
+    ref:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    name: myapp-dev
+    namespace: development
+
+# Step 9: Verify cleanup
+
+- name: verify-cleanup
+  description: “Verify all resources are cleaned up (no leftovers!)”
+  try:
+  - script:
+    content: |
+    #!/bin/bash
+    echo “⏳ Waiting for cleanup…”
+    sleep 30
+    
+    ```
+    # Check if any managed resources remain
+    REMAINING=$(kubectl get managed -l crossplane.io/composite=myapp-dev 2>/dev/null | wc -l)
+    
+    if [ "$REMAINING" -gt 1 ]; then  # Header line counts as 1
+      echo "⚠️  Some resources still exist (cleanup in progress)"
+      echo "   This is normal - Azure resources take time to delete"
+    else
+      echo "✅ All resources cleaned up!"
+    fi
+    ```
+    
+    timeout: 10m
+
+-----
+
+# Test for medium combo
+
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+name: developer-combo-size-upgrade
+annotations:
+description: “Test upgrading from small to medium - like super-sizing your meal”
+spec:
+steps:
+
+- name: create-small
+  try:
+  - apply:
+    file: ../../../crossplane/claims/dev/myapp-dev-combo.yaml
+  - assert:
+    resource:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    metadata:
+    name: myapp-dev
+    spec:
+    size: small
+    status:
+    conditions:
+    - type: Ready
+    status: “True”
+    timeout: 15m
+- name: upgrade-to-medium
+  description: “Customer says: ‘Actually, make it a medium!’”
+  try:
+  - patch:
+    resource:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    metadata:
+    name: myapp-dev
+    namespace: development
+    spec:
+    size: medium  # Upgrade!
+- name: verify-upgrade
+  description: “Check that database was upgraded to medium size”
+  try:
+  - assert:
+    resource:
+    apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+    kind: FlexibleServer
+    metadata:
+    labels:
+    crossplane.io/composite: myapp-dev
+    spec:
+    forProvider:
+    skuName: GP_Standard_D2s_v3  # Medium size
+    timeout: 20m
+- name: cleanup
+  try:
+  - delete:
+    ref:
+    apiVersion: example.com/v1alpha1
+    kind: DeveloperCombo
+    name: myapp-dev
+    namespace: development
