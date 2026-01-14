@@ -1,1 +1,21 @@
+# Medium Developer Combo - “Regular Meal”
 
+# Good for staging environments
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-staging
+namespace: staging
+annotations:
+description: “Medium combo for staging - like a Regular Meal”
+spec:
+size: medium
+includeDatabase: true
+storageSize: “50Gi”
+environment: staging
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
