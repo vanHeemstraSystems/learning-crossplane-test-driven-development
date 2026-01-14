@@ -1,0 +1,71 @@
+# Small Developer Combo - “Kids Meal”
+
+# Perfect for development environments
+
+-----
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-dev
+namespace: development
+annotations:
+description: “Small combo for development - like a Kids Meal”
+spec:
+size: small
+includeDatabase: true
+storageSize: “10Gi”
+environment: development
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
+
+-----
+
+# Medium Developer Combo - “Regular Meal”
+
+# Good for staging environments
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-staging
+namespace: staging
+annotations:
+description: “Medium combo for staging - like a Regular Meal”
+spec:
+size: medium
+includeDatabase: true
+storageSize: “50Gi”
+environment: staging
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
+
+-----
+
+# Large Developer Combo - “Super Size”
+
+# Production-ready infrastructure
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-prod
+namespace: production
+annotations:
+description: “Large combo for production - Super Sized!”
+spec:
+size: large
+includeDatabase: true
+storageSize: “500Gi”
+environment: production
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
