@@ -1,1 +1,21 @@
+# Small Developer Combo - “Kids Meal”
 
+# Perfect for development environments
+
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+name: myapp-dev
+namespace: development
+annotations:
+description: “Small combo for development - like a Kids Meal”
+spec:
+size: small
+includeDatabase: true
+storageSize: “10Gi”
+environment: development
+
+compositionSelector:
+matchLabels:
+provider: azure
+combo: developer
