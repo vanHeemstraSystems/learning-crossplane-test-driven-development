@@ -1,1 +1,65 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+name: PLACEHOLDER_NAME
+spec:
+group: PLACEHOLDER_GROUP
+names:
+kind: PLACEHOLDER_KIND
+plural: PLACEHOLDER_PLURAL
+claimNames:
+kind: PLACEHOLDER_CLAIM_KIND
+plural: PLACEHOLDER_CLAIM_PLURAL
+versions:
 
+- name: v1alpha1
+  served: true
+  referenceable: true
+  schema:
+  openAPIV3Schema:
+  type: object
+  properties:
+  spec:
+  type: object
+  description: “PLACEHOLDER_DESCRIPTION”
+  properties:
+  size:
+  type: string
+  description: “Size: small, medium, or large”
+  enum:
+  - small
+  - medium
+  - large
+  includeDatabase:
+  type: boolean
+  description: “Include database component”
+  default: true
+  storageSize:
+  type: string
+  description: “Storage size”
+  default: “10Gi”
+  environment:
+  type: string
+  description: “Environment: development, staging, production”
+  enum:
+  - development
+  - staging
+  - production
+  default: development
+  required:
+  - size
+  status:
+  type: object
+  properties:
+  ready:
+  type: boolean
+  description: “Overall ready status”
+  endpoint:
+  type: string
+  description: “Primary endpoint”
+  resourceGroupName:
+  type: string
+  storageAccountName:
+  type: string
+  networkName:
+  type: string
